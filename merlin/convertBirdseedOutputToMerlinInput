@@ -1,0 +1,288 @@
+#!/usr/bin/env Rscript
+
+# Global constants ----------------------------------------------------------
+
+sampleMetadataFile <- "sample_info/samples.txt"
+markerMetadataZip  <- "../../resources/rutgersPhysicalGeneticMap_genomeBuild36_affySnp6_interpolated.zip"
+genotypeDataDir    <- "data"
+outputDir          <- "merlin_input"
+pedigreeFile       <- "all.ped"
+dataFile           <- "all.dat"
+mapFile            <- "all.map"
+chromosomes        <- as.character(1:22)
+numMarkers         <- 5000
+subsets            <- as.character(0:9)
+
+
+# Logging -------------------------------------------------------------------
+
+putLog <- function(message) {
+  cat(message, file = stdout())
+}
+putErr <- function(message) {
+  cat(sprintf('ERROR: %s', message), file = stdout())
+  cat(sprintf('ERROR: %s', message), file = stderr())
+}
+
+
+# Read sample metadata ------------------------------------------------------
+
+putLog(sprintf("Reading sample metadata from %s\n", sampleMetadataFile))
+samples <- read.table(pipe(sprintf("cut -d'	' -f1,3-7,14 %s",
+                                   sampleMetadataFile)),
+                      header = TRUE, sep = "\t", quote = "", row.names = NULL,
+                      colClasses = 'character', na.strings = 'NA',
+                      check.names = FALSE, fill = FALSE, comment.char = '')
+colNames <- c('Sample ID', 'Father ID', 'Mother ID', 'Gender',
+              'Disease Status', 'Availability', 'EA Birdseed output filename')
+putLog("    checking column names\n")
+if(! all(colnames(samples) == colNames)) {
+  putErr(sprintf('Unknown format for sample metadata file %s',
+                 sampleMetadataFile))
+  stop()
+}
+
+putLog("    removing unavailable samples\n")
+samples <- samples[! is.na(samples[, 'Availability']), ]
+putLog("    checking for missing data\n")
+if(any(apply(samples, 1, function(x) any(is.na(x))))) {
+  putErr(sprintf('Missing pedigree data in %s', pedigreeFile))
+  stop()
+}
+putLog("    checking for duplicated samples\n")
+if(any(duplicated(samples[, 'Sample ID'])) ||
+   any(duplicated(samples[, 'EA Birdseed output filename']))) {
+  putErr(sprintf('Duplicate sample IDs or filenames in %s', sampleMetadataFile))
+  stop()
+}
+rownames(samples) <- samples[, 'Sample ID']
+
+
+# Read marker metadata ------------------------------------------------------
+
+putLog(sprintf("Reading marker metadata from %s\n", markerMetadataZip))
+readRutgersAffyMap <- function(i, zip) {
+  marker <- read.table(pipe(sprintf('unzip -qc %s %s/Affy_60_%iM.csv',
+                                    zip, 'Affymetrix_60', i)),
+                       header = TRUE, sep = ",", quote = "", row.names = NULL,
+                       colClasses = 'character', na.strings = 'NA',
+                       check.names = FALSE, fill = FALSE, comment.char = '')
+  marker <- cbind(marker, Build36_chromosome = as.character(i))
+  return(marker)
+}
+markers <- lapply(1:23,
+                  function(i) {
+                    putLog(sprintf('    reading chromosome %i\n', i))
+                    readRutgersAffyMap(i, markerMetadataZip)
+                  })
+colNames <- c('Markers_name', 'Build36_map_physical_position',
+              'Sex-averaged_map_position_(Kosambi_cM)',
+              'Female_map_position_(Kosambi_cM)',
+              'Male_map_position_(Kosambi_cM)', 'Build36_chromosome')
+putLog("    checking column names\n")
+if(! all(sapply(markers, function(x) all(colnames(x) == colNames)))) {
+  putErr(sprintf('Unknown format for marker metadata in %s', markerMetadataZip))
+  stop()
+}
+putLog("    merging marker data across chromosomes\n")
+markers <- do.call(rbind, markers)
+putLog("    removing missing data\n")
+markers <- markers[! apply(markers, 1, function(x) any(is.na(x))), ]
+putLog("    removing duplicated markers\n")
+markers <- markers[! duplicated(markers[, 'Markers_name']), ]
+
+
+# Read genotype data --------------------------------------------------------
+
+putLog(sprintf("Reading genotype data from %s\n", genotypeDataDir))
+readBirdseedGenotype <- function(birdseedFile) {
+  genotype <- read.table(pipe(sprintf("tail -n+6 %s | cut -d'	' -f1,7,9-11",
+                                      birdseedFile)),
+                         header = TRUE, sep = "\t", quote = "",
+                         row.names = NULL, colClasses = 'character',
+                         na.strings = c('---', ''), check.names = FALSE,
+                         fill = FALSE, comment.char = '')
+  return(genotype)
+}
+genotypeFiles <- paste(genotypeDataDir,
+                       samples[, 'EA Birdseed output filename'], sep='/')
+names(genotypeFiles) <- rownames(samples)
+genotypes <- lapply(genotypeFiles,
+                    function(x) {
+                      putLog(sprintf('    reading %s\n', x))
+                      readBirdseedGenotype(x)
+                    })
+colNames <- c('Probe Set ID', 'Forward Strand Base Calls', 'dbSNP RS ID',
+              'Chromosome', 'Chromosomal Position')
+putLog("    checking column names\n")
+if(! all(sapply(genotypes, function(x) all(colnames(x) == colNames)))) {
+  putErr(sprintf('Unknown format for genotype data in %s\n', genotypeDataDir))
+  stop()
+}
+probes <- genotypes[[1]][, c('Probe Set ID', 'dbSNP RS ID', 'Chromosome',
+                             'Chromosomal Position')]
+putLog("    checking for missing probe names\n")
+if(any(is.na(probes[, 'Probe Set ID']))) {
+  putErr('Missing probeset ID in genotype data\n')
+  stop()
+}
+putLog("    checking for duplicate probe names\n")
+if(any(duplicated(probes[, 'Probe Set ID']))) {
+  putErr('    Duplicate probeset IDs in genotype data')
+  stop()
+}
+rownames(probes) <- probes[, 'Probe Set ID']
+putLog("    checking probe order between samples\n")
+if(! all(sapply(genotypes,
+                function(x) all(x[, 'Probe Set ID'] == rownames(probes))))) {
+  putErr('Probeset IDs or their order do not match across samples')
+  stop()
+}
+putLog("    merging genotype data across samples\n")
+genotypes <- do.call(data.frame,
+                     c(lapply(genotypes,
+                              function(x) x[, 'Forward Strand Base Calls']),
+                       check.names = FALSE, stringsAsFactors = FALSE))
+rownames(genotypes) <- rownames(probes)
+putLog("    checking for anomalous genotype calls\n")
+if(! all(sapply(genotypes, function(x) all(nchar(x[!is.na(x)]) == 2)))) {
+  putErr('Invalid genotype in data')
+  stop()
+}
+
+
+# Crossref sample, marker and genotype data ---------------------------------
+
+putLog("Integrating sample, marker and genotype data\n")
+putLog("    cross-referencing sample IDs\n")
+if(! all(colnames(genotypes) == rownames(samples))) {
+  putErr(paste('(Internal error)',
+               'Sample IDs do not match between genotypes and sample metadata',
+               '\n'))
+  stop()
+}
+putLog("    cross-referencing probe IDs\n")
+probes <- cbind(probes,
+                markers[match(probes[, 'dbSNP RS ID'],
+                              markers[, 'Markers_name']),
+                        c('Sex-averaged_map_position_(Kosambi_cM)',
+                          'Female_map_position_(Kosambi_cM)',
+                          'Male_map_position_(Kosambi_cM)')])
+if(! all(rownames(genotypes) == rownames(probes))) {
+  putErr(paste('(Internal error)',
+               'Probeset IDs do not match between genotypes and probe metadata',
+               '\n'))
+  stop()
+}
+
+
+# Filter data ---------------------------------------------------------------
+
+putLog("Filtering and ordering data\n")
+keep <- rep(TRUE, nrow(genotypes))
+putLog("    excluding probes with any missing genotype data\n")
+keep <- keep & apply(genotypes, 1, function(x) ! any(is.na(x)))
+putLog(sprintf("    excluding probes not on chromosomes %s\n",
+               paste(chromosomes, collapse = ",")))
+keep <- keep & probes[, 'Chromosome'] %in% chromosomes
+putLog("    excluding Affymetrix QC probes\n")
+keep <- keep & ! grepl('^AFFX', rownames(probes), perl = TRUE)
+putLog("    excluding probes that do not have an rsID\n")
+keep <- keep & ! is.na(probes[, 'dbSNP RS ID'])
+putLog("    excluding all but one probe per rsID\n")
+keep <- keep & ! duplicated(probes[, 'dbSNP RS ID'])
+putLog("    excluding probes without a physical map location\n")
+keep <- keep & ! is.na(probes[, 'Chromosome']) &
+               ! is.na(probes[, 'Chromosomal Position'])
+putLog("    excluding probes without a genetic map location\n")
+keep <- keep & ! is.na(probes[, 'Sex-averaged_map_position_(Kosambi_cM)']) &
+               ! is.na(probes[, 'Female_map_position_(Kosambi_cM)']) &
+               ! is.na(probes[, 'Male_map_position_(Kosambi_cM)'])
+genotypes <- genotypes[keep, ]
+probes <- probes[keep, ]
+putLog("    sampling a subset of markers\n")
+if(numMarkers * length(subsets) > nrow(probes)) {
+  putErr(sprintf(paste("Insufficient number of probes remain (%i)",
+                       "to generate %i subsets of %i markers each"),
+                 nrow(probes), length(subsets), numMarkers))
+  stop()
+}
+keep <- sample.int(nrow(probes), numMarkers * length(subsets))
+genotypes <- genotypes[keep, ]
+probes <- probes[keep, ]
+
+# FIXME: There are a small number of rsIDs for which the Birdseed and Rutgers
+# data disagree on chromosome. May be due to differing builds used.
+
+
+# Format data for merlin ----------------------------------------------------
+
+putLog("Encoding data for Merlin\n")
+putLog("    translating sample metadata\n")
+samples <- cbind(samples, 'Family ID' = '1')
+samples[samples[, 'Father ID'] == '-1', 'Father ID'] <- '0'
+samples[samples[, 'Mother ID'] == '-1', 'Mother ID'] <- '0'
+samples[samples[, 'Gender'] == 'male', 'Gender'] <- '1'
+samples[samples[, 'Gender'] == 'female', 'Gender'] <- '2'
+samples[samples[, 'Disease Status'] == 'unaffected', 'Disease Status'] <- '1'
+samples[samples[, 'Disease Status'] == 'affected', 'Disease Status'] <- '2'
+putLog("    translating genotype data\n")
+encodeGenotypesForMerlin <- function(x) {
+  missing <- is.na(x)
+  x <- paste(substr(x, 1, 1), substr(x, 2, 2), sep = '/')
+  x[missing] <- 'x'
+  return(x)
+}
+genotypes <- do.call(data.frame,
+                     c(lapply(genotypes, encodeGenotypesForMerlin),
+                       check.names = FALSE, stringsAsFactors = FALSE))
+rownames(genotypes) <- rownames(probes)
+
+
+# Generate Merlin input files -----------------------------------------------
+
+putLog("Generating Merlin input files\n")
+
+subsetDir <- paste("subset", subsets, sep = "_")
+subsetIndex <- matrix(sample.int(nrow(probes)), nrow = numMarkers)
+samples <- samples[colnames(genotypes),
+                   c('Family ID', 'Sample ID', 'Father ID', 'Mother ID' ,
+                     'Gender', 'Disease Status')]
+writeMerlinFiles <- function(i) {
+  isubset    <- subsetIndex[, i]
+  igenotypes <- genotypes[isubset, ]
+  iprobes    <- probes[isubset, ]
+
+  ord <- order(as.integer(iprobes[, 'Chromosome']),
+               as.integer(iprobes[, 'Chromosomal Position']))
+  igenotypes <- igenotypes[ord, ]
+  iprobes    <- iprobes[ord, ]
+
+  system(sprintf('rm -rf %s; mkdir -p %s',
+                 file.path(outputDir, subsetDir[i]),
+                 file.path(outputDir, subsetDir[i])))
+  write.table(cbind(samples, t(igenotypes)),
+              file.path(outputDir, subsetDir[i], pedigreeFile),
+              quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+  write.table(data.frame(Code = c('A', rep('M', nrow(iprobes))),
+                         Label = c('LBM_DISEASE', iprobes[, 'dbSNP RS ID'])),
+              file.path(outputDir, subsetDir[i], dataFile),
+              quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+  write.table(iprobes[, c('Chromosome', 'dbSNP RS ID',
+                          'Sex-averaged_map_position_(Kosambi_cM)')],
+              file.path(outputDir, subsetDir[i], mapFile),
+              quote = FALSE, sep = "\t", row.names = FALSE,
+              col.names = c('CHROMOSOME', 'MARKER', 'POSITION'))
+  return(NULL)
+}
+invisible(sapply(seq_along(subsets),
+                 function(i) {
+                   putLog(sprintf('    processing subset %s\n', subsets[i]))
+                   writeMerlinFiles(i)
+                 }))
+
+
+# Done ----------------------------------------------------------------------
+putLog("Done\n")
+
+# vim: ft=r

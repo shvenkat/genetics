@@ -1,0 +1,42 @@
+#!/bin/bash
+
+inDir=liden_output
+maternal_plot=inferred_maternal_allele_sharing
+paternal_plot=inferred_paternal_allele_sharing
+# allChromosomes="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT"
+allChromosomes="6"
+allSubsets="0 1 2 3 4"
+failedRuns=""
+
+if [[ $# -ne 0 ]]; then
+    echo "Options are not supported. Run to generate LIden plots."
+    exit 1
+fi
+
+echo -n "Converting LIden per-chromosome and per-subset plots ..."
+for chr in $allChromosomes; do
+  for subset in $allSubsets; do
+    printf ' %s:%s' $chr $subset
+    cd ${inDir}/chr${chr}/subset.$subset
+    gunzip {${maternal_plot},${paternal_plot}}.{plt,txt}.gz
+    gnuplot ${maternal_plot}.plt > /dev/null && \
+    convert -density 100 ${maternal_plot}.eps \
+      -rotate 90 -background white -flatten ${maternal_plot}.png && \
+    rm -f ${maternal_plot}.eps && \
+    gnuplot ${paternal_plot}.plt > /dev/null && \
+    convert -density 100 ${paternal_plot}.eps \
+      -rotate 90 -background white -flatten ${paternal_plot}.png && \
+    rm -f ${paternal_plot}.eps
+    retval=$?
+    if [[ $retval -ne 0 ]]; then
+      failedRuns="$failedRuns $chr:$subset"
+    fi
+    gzip {${maternal_plot},${paternal_plot}}.{plt,txt}
+    cd ../../..
+  done
+done
+echo
+
+if [[ -n $failedRuns ]]; then
+  echo "Conversion failed on runs (chromosome:subset) $failedRuns"
+fi

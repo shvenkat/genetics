@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# Check that sample gender reported by assays is correct
+echo -n "Checking that reported and assayed gender match ..."
+mismatch=$(cat 'data/CHP Summary Table.TXT' \
+            'data/EA12005_2013-05-01_CHP Summary Table.TXT' \
+           | grep EA12005 \
+           | cut -d'	' -f2,3,17,22,34 \
+           | grep -P '\tfemale' | grep -P '\tmale' \
+           | cut -d'	' -f1)
+if [[ $mismatch == "" ]]; then
+  echo " OK"
+else
+  echo
+  for file in $mismatch; do echo "    mismatch found in sample $file"; done
+fi
+
+# Check that all genotype files have the same number of markers
+echo -n "Checking that the number of probesets match ..."
+nResType=$(for file in $(ls -1 data/*.txt); do wc -l "$file"; done \
+           | cut -d' ' -f1 | sort | uniq | wc -l)
+if [[ $nResType == "1" ]]; then
+  echo " OK"
+else
+  echo
+  echo "    samples differ in number of probesets"
+fi
+
+# Check that all genotype files have the same markers in the same order
+echo -n "Checking that the order of probesets match ..."
+probes=$(mktemp)
+cat "$(ls -1 data/*.txt | head -n1)" | tail -n+6 | cut -d'	' -f1 > $probes
+mismatch="no"
+for file in $(ls -1 data/*.txt); do
+  if ! cmp $probes <(cat "$file" | tail -n+6 | cut -d'	' -f1) > /dev/null; then
+    mismatch="yes"
+    break
+  fi
+done
+if [[ $mismatch == "no" ]]; then
+  echo " OK"
+  nDups=$(cat $probes | sort | uniq -d | wc -l)
+  if [[ $nDups == "0" ]]; then
+    echo "    all probesets are unique"
+  else
+    echo "    $nDups duplicate probesets found"
+  fi
+else
+  echo
+  echo "    samples differ in the identity or order of probesets"
+fi
+rm -f $probes
+
+# Check that all genotype files have the same SNPs in the same order
+echo -n "Checking that the order of SNPs match ..."
+snps=$(mktemp)
+cat "$(ls -1 data/*.txt | head -n1)" | tail -n+6 | cut -d'	' -f9 > $snps
+mismatch="no"
+for file in $(ls -1 data/*.txt); do
+  if ! cmp $snps <(cat "$file" | tail -n+6 | cut -d'	' -f9) > /dev/null; then
+    mismatch="yes"
+    break
+  fi
+done
+if [[ $mismatch == "no" ]]; then
+  echo " OK"
+  nDups=$(cat $snps | sort | uniq -d | wc -l)
+  if [[ $nDups == "0" ]]; then
+    echo "    all SNPs are unique"
+  else
+    echo "    $nDups duplicate SNPs found"
+  fi
+else
+  echo
+  echo "    samples differ in the identity or order of SNPs"
+fi
+rm -f $snps
+
+# Check that all genotype files were generated using the same settings
+echo -n "Checking that samples were annotated with identical settings ..."
+nLines=$(for file in $(ls -1 data/*.txt); do \
+           cat "$file" | head -n5 | tail -n3; \
+         done | sort | uniq | wc -l)
+if [[ $numLines == "3" ]]; then
+  echo " OK"
+else
+  echo
+  echo "    samples were annotated with different settings"
+fi
+
+# Check that all genotype files use the same genotype vocabulary
+echo -n "Checking that all samples use the same genotype symbols ..."
+symbols=$(cat $(ls -1 data/*.txt | head -n1) | cut -d'	' -f2 | tail -n+7 \
+          | sort | uniq | tr '\n' ' ')
+mismatch="no"
+for file in $(ls -1 data/*.txt); do
+  s=$(cat "$file" | cut -d'	' -f2 | tail -n+7 | sort | uniq | tr '\n' ' ')
+  if [[ $s != $symbols ]]; then
+    mismatch="yes"
+    break
+  fi
+done
+if [[ $mismatch == "no" ]]; then
+  echo " OK"
+  echo "    symbols used are $symbols"
+else
+  echo
+  echo "    samples differ in symbols used for genotypes"
+fi

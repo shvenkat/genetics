@@ -1,0 +1,24 @@
+#!/bin/bash
+
+inputDir=$(readlink -f merlin_input)
+outputDir=$(readlink -f merlin_output)
+jobDir=merlin_jobs
+analyses="genoError nonParaLinkage paraLinkage"
+subsets=$(find $inputDir -mindepth 1 -maxdepth 1 -type d -name 'subset*' \
+		-print0 | xargs -0 -L1 basename)
+
+rm -f $jobDir/*-lsf.sh
+for a in $analyses; do
+	for s in $subsets; do
+		sed \
+			-e "s#INPUT#$inputDir#g" \
+			-e "s#OUTPUT#$outputDir#g" \
+			-e "s#SUBSET#$s#g" \
+			< $jobDir/${a}-lsf.template > $jobDir/${a}-${s}-lsf.sh
+	done
+done
+
+echo "LSF job scripts have been written to $jobDir"
+echo "Submit the jobs to LSF using: bsub < foo-lsf.sh"
+echo "Ensure that the genoError-* jobs complete before submitting the" \
+	"corresponding linkage jobs"

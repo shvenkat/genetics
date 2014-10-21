@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Generate genotyping calls from CEL files
+./apt/bin/apt-probeset-genotype \
+  -c lib/GenomeWideSNP_6.cdf \
+  -a birdseed \
+  --read-models-birdseed lib/GenomeWideSNP_6.birdseed.models \
+  --special-snps lib/GenomeWideSNP_6.specialSNPs \
+  --out-dir out \
+  --cel-files listfile
+
+# Extract allele-specific signals from CEL files
+./apt/bin/apt-probeset-summarize \
+  --cdf-file lib/GenomeWideSNP_6.cdf \
+  --analysis quant-norm.sketch=50000,pm-only,med-polish,expr.genotype=true \
+  --target-sketch penncnv-affy/lib/hapmap.quant-norm.normalization-target.txt \
+  --out-dir out \
+  --cel-files listfile
+
+# Generate canonical genotype clustering file
+### SKIPPED: 22 CEL files is too few to generate accurate clusters, so a
+### default clustering file from PennCNV-Affy is used instead.
+
+# Calculate LRR and BAF
+./penncnv-affy/bin/normalize_affy_geno_cluster.pl \
+  out/hapmap.genocluster \
+  out/quant-norm.pm-only.med-polish.expr.summary.txt \
+  -locfile penncnv-affy/lib/affygw6.hg18.pfb \
+  -out out/gw6.lrr_baf.txt
+
+# Split the signal file into individual files for CNV calling by PennCNV
+./penncnv/kcolumn.pl \
+  out/gw6_hg18.lrr_baf.txt \
+  split 2 -tab -head 3 \
+  -name --beforestring .Log -out out/gw6_hg18.lrr_baf
+
+mv out penncnv-affy-out
+
+# Run PennCNV on individual signal files
+./penncnv/detect_cnv.pl \
+  -test \
+  -hmm penncnv-affy/lib/affygw6.hmm \
+  -pfb penncnv-affy/lib/affygw6.hg18.pfb \
+  -list signallistfile \
+  -log penncnv-out/gw6_hg18.log \
+  -out penncnv-out/gw6_hg18.rawcnv

@@ -1,0 +1,194 @@
+#!/bin/bash
+
+sampleMetadata=samples.txt
+outDir=liden_input
+pedigree=pedigree.txt
+genotype=genotype.txt.gz
+locus=locus.txt.gz
+chromosomes="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT"
+numSubsets=5
+
+if [[ $1 == "-h" ]]; then
+  echo "Options are not supported. Run to generate LIden input."
+  exit 1
+fi
+
+#
+# Functions
+#
+getCol () {
+  filename=$1
+  colname=$2
+  col=$(head -n1 "$filename" \
+        | tr '\t' '\n' \
+	| grep -n "^${colname}\$" \
+	| grep -oP '^\d+')
+  tail -n+2 "$filename" | cut -d'	' -f $col
+}
+
+getField () {
+  filename=$1
+  rowname=$2
+  colname=$3
+  col=$(head -n1 "$filename" \
+        | tr '\t' '\n' \
+	| grep -n "^${colname}\$" \
+	| grep -oP '^\d+')
+  value=$(grep -G "^${rowname}	" "$filename" \
+          | cut -d'	' -f $col)
+  echo $value
+}
+
+#
+# cleaning output directory
+#
+echo -n "Cleaning output directory ... "
+rm -rf $outDir
+mkdir -p $outDir
+echo "done"
+
+#
+# get samples
+#
+echo "Reading sample metadata"
+
+# filter out samples if needed
+echo -n "    Removing samples 17, 18 ... "
+cat sample_info/$sampleMetadata | grep -vP '^(17|18)\t' > $sampleMetadata
+echo "done"
+
+echo "   " $(( $(cat $sampleMetadata | wc -l) - 1)) "samples retained"
+samples=$(getCol $sampleMetadata 'Sample ID')
+files=$(getCol $sampleMetadata 'EA Birdseed output filename')
+
+#
+# pedigree
+#
+echo -n "    Writing pedigree file ... "
+cat $sampleMetadata | tail -n+2 | cut -d'	' -f1,3,4,5,6,7 \
+  > $outDir/$pedigree
+echo "done"
+
+#
+# combine samples
+#
+echo "Reading birdseed files"
+tmpDir=$(mktemp -d)
+tmpFiles=""
+
+echo -n "    Extracting probe metadata ... "
+probeFile=$(mktemp --tmpdir=$tmpDir)
+cat data/$(echo $files | cut -d' ' -f1) \
+  | tail -n+6 | cut -d'	' -f1,9,10,11 | tr -d '\r' > $probeFile
+tmpFiles="$tmpFiles $probeFile"
+echo "done"
+
+echo -n "    Extracting genotypes of individual samples ..."
+for sample in $samples; do
+  printf ' %s' $sample
+  file=$(mktemp --tmpdir=$tmpDir)
+  echo $sample > $file
+  cat data/$(getField $sampleMetadata $sample 'EA Birdseed output filename') \
+    | tail -n+7 | cut -d'	' -f2 >> $file
+  tmpFiles="$tmpFiles $file"
+done
+echo -e ", done"
+
+echo -n "    Combining probe and genotype data ... "
+masterFile=$(mktemp)
+paste $tmpFiles > $masterFile
+rm -rf $tmpDir
+echo "done"
+
+#
+# handle missing data
+# The LIden manual says it can handle missing data denoted by '?' but this
+# appears to be false.
+#
+echo -n "    Removing probes with a missing genotype in any sample ... "
+file=$(mktemp)
+#cat $masterFile | sed -re 's/\tNoCall/\t\?/g' > $file
+cat $masterFile | grep -vP '\tNoCall' > $file
+echo -n $(( $(cat $masterFile | wc -l) - $(cat $file | wc -l) )) \
+  "probes removed"
+mv -f $file $masterFile
+echo ", done"
+
+#
+# remove QC probes, unmapped probes and non-uniquely mapped probes
+#
+echo -n "    Removing QC and unmapped probes ... "
+file=$(mktemp)
+cat <(cat $masterFile | head -n1) \
+  <(cat $masterFile | tail -n+2 | grep -vP '^AFFX-SNP' \
+    | grep -P '^(\S+\t){2}(\d|\d\d|X|Y|MT)\t\d+\t') > $file
+echo -n $(( $(cat $masterFile | wc -l) - $(cat $file | wc -l) )) \
+  "probes removed"
+mv -f $file $masterFile
+echo ", done"
+
+#
+# sort by genomic coordinate
+#
+echo -n "    Sorting probes by genomic coordinate, removing duplicates ... "
+file=$(mktemp)
+cat <(cat $masterFile | head -n1) \
+  <(cat $masterFile | tail -n+2 | sort -k3,3 -k4,4n -u) > $file
+echo -n $(( $(cat $masterFile | wc -l) - $(cat $file | wc -l) )) \
+  "probes removed"
+mv -f $file $masterFile
+echo ", done"
+
+echo $(( $(cat $masterFile | wc -l) - 1)) \
+  "unique mapped probes (markers) retained"
+
+#
+# generate subsets of the data by sampling
+# Combined analysis of data subsets can yields better results. Also LIden has
+# an ad-hoc limit of 30,000 markers per chromosome, which is exceeded by a
+# number of chromosomes.
+#
+echo -n "Generating $numSubsets data subsets by sampling ..."
+subsetFile=$(mktemp)
+for ((i = 0; i < numSubsets; i++)); do
+  cat $masterFile | head -n1 > $subsetFile.$i
+done
+lineNumber=0
+OIFS=$IFS; IFS=""
+cat $masterFile | tail -n+2 | while read line; do
+  echo $line >> $subsetFile.$((lineNumber % numSubsets))
+  lineNumber=$((lineNumber + 1))
+done
+IFS=$OIFS
+echo " done"
+echo "   " $(( ( $(cat $masterFile | wc -l) -1 ) / numSubsets )) \
+  "markers per subset"
+
+#
+# write per-chromosome genotype and locus files
+#
+echo -n "Writing genotype and locus files for chromosome"
+for chr in $chromosomes; do
+  printf ' %s' $chr
+  chrOutDir=$outDir/chr${chr}
+  mkdir $chrOutDir
+  for ((i = 0; i < numSubsets; i++)); do
+    subsetOutDir=$chrOutDir/subset.$i
+    mkdir $subsetOutDir
+    file=$(mktemp)
+    cat <(cat $subsetFile.$i | head -n1) \
+      <(cat $subsetFile.$i | tail -n+2 | grep -P "^(\S+\t){2}${chr}\t") \
+      > $file
+    cat $file | cut -d'	' -f5- | gzip > "$subsetOutDir/${genotype}"
+    # cat $file | cut -d'	' -f1-4 | gzip > "$subsetOutDir/annotated_${locus}"
+    cat $file | tail -n+2 | cut -d'	' -f4 | gzip > "$subsetOutDir/${locus}"
+    rm -f $file
+  done
+done
+echo ", done"
+
+rm -f $masterFile $sampleMetadata $subsetFile.*
+
+echo ""
+echo "LIden input files saved to ${outDir}/: ${pedigree}," \
+  "chr*/subset.n/${genotype} and chr*/subset.n/${locus}"

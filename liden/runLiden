@@ -1,0 +1,113 @@
+#!/bin/bash
+
+inDir=liden_input
+outDir=liden_output
+pedigree=pedigree.txt
+genotype=genotype.txt.gz
+locus=locus.txt.gz
+allChromosomes="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT"
+allSubsets="0 1 2 3 4"
+runs=""
+failedRuns="" # certain runs fail due to a LIden bug e.g. chr 13 20 21 Y
+
+#
+# usage
+#
+usage () {
+  echo "Usage: $(basename $0) [arg] [arg2] ..."
+  echo "  Without arguments, all chromosomes and subsets are processed."
+  echo "  The optional arguments are of the form <chr> or <chr>:<subset>."
+  echo "  <chr> is a valid chromosome identifier, one of $allChromosomes"
+  echo "  <subset> is a valid subset identifier, one of $allSubsets"
+  exit 1
+}
+
+#
+# handle options
+#
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -h|--help)
+    shift
+    usage
+    ;;
+  *)
+    if [[ $1 =~ ^[^:]+:[^:]+$ ]]; then
+      runs="$runs $1"
+    elif [[ $1 =~ ^[^:]+$ ]]; then
+      for i in $allSubsets; do
+        runs="$runs $1:$i"
+      done
+    else
+      :
+    fi
+    shift
+    ;;
+  esac
+done
+
+if [[ -z $runs ]]; then
+  for chr in $allChromosomes; do
+    for i in $allSubsets; do
+      runs="$runs $chr:$i"
+    done
+  done
+  echo -n "Cleaning output directory, all prior output being deleted ... "
+  rm -rf $outDir/*
+  mkdir -p $outDir
+  echo "done"
+else
+  echo "Output directory not being cleaned, any prior output for OTHER" \
+    "chromosome:subset combinations will be retained"
+fi
+
+#
+# run LIden, once per chromosome
+#
+echo "Running LIden on per-chromosome and per-subset genotype data"
+echo -n "    Processing run (chromosome:subset)"
+for run in $runs; do
+  if [[ $run =~ ^([^:]+):([^:]+)$ ]]; then
+    chr=${BASH_REMATCH[1]}
+    subset=${BASH_REMATCH[2]}
+  else
+    failedRuns="$failedRuns $run"
+    continue
+  fi
+  printf ' %s:%s' $chr $subset
+  chrDir=chr${chr}
+  subsetDir=subset.$subset
+  mkdir -p $outDir/$chrDir/$subsetDir
+  cd $outDir/$chrDir/$subsetDir
+  rm -rf ./*
+  gunzip ../../../$inDir/$chrDir/$subsetDir/{$genotype,$locus}
+  java -cp ../../../../../resources/liden Haplotyping \
+    -p ../../../$inDir/$pedigree \
+    -g ../../../$inDir/$chrDir/$subsetDir/${genotype%.gz} \
+    -l ../../../$inDir/$chrDir/$subsetDir/${locus%.gz} \
+    -m 0 -u 2 -a 0 \
+    | grep -q Finished
+  retval=$?
+  if [[ $retval -ne 0 ]]; then
+    failedRuns="$failedRuns $run"
+    rm -rf ./*
+  else
+    find . -type f -print | grep -vP 'inferred|linked' | xargs rm -f
+    find . -type f -print | grep 'inferred' | xargs gzip
+  fi
+  gzip ../../../$inDir/$chrDir/$subsetDir/{${genotype%.gz},${locus%.gz}}
+  cd ../../..
+done
+echo ", done"
+
+if [[ ! -z $failedRuns ]]; then
+    echo -n "LIden failed on runs (chromosome:subset)"
+    for run in $failedRuns; do
+        echo -n " $run"
+    done
+    echo
+    echo "Output for failed runs has been deleted"
+    exit 255
+else
+    exit 0
+fi

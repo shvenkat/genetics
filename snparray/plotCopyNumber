@@ -1,0 +1,60 @@
+#!/usr/bin/env Rscript
+
+library(reshape2)
+library(ggplot2)
+library(scales)
+
+file_prefix <- 'chr6p21.1_hg18.lrr_baf'
+data_file <- paste(file_prefix, '.txt', sep = '', collapse = '')
+detail_plot_file <- paste(file_prefix, '.detail.png', sep = '', collapse = '')
+summary_plot_file <- paste(file_prefix, '.summary.png', sep = '',
+                           collapse = '')
+sample_file <- '~/projects/bone_dz_genetics/resources/samples.txt'
+
+dat <- read.table(data_file, header = TRUE, sep = "\t", quote = "",
+                   na.strings = "", check.names = FALSE, comment.char = "",
+                   stringsAsFactors = FALSE)
+cols <- colnames(dat)
+cols <- sub('^EA.+SNP_6_', '', cols, perl = TRUE)
+cols <- sub('.CEL.Log R Ratio', '_LRR', cols, perl = TRUE)
+cols <- sub('.CEL.B Allele Freq', '_BAF', cols, perl = TRUE)
+cols[cols == 'Position'] <- 'Coordinate'
+colnames(dat) <- cols
+dat <- subset(dat, select = -c(Name, Chr))
+
+dat <- melt(dat, id.vars = 'Coordinate', variable.name = 'Sample_Measure',
+             value.name = 'Value')
+s_m <- strsplit(as.character(dat$Sample_Measure), '_', fixed = TRUE)
+stopifnot(all(sapply(s_m, length) == 2))
+dat$Sample <- as.factor(sapply(s_m, function(x) x[1]))
+dat$Measure <- as.factor(sapply(s_m, function(x) x[2]))
+dat <- subset(dat, select = -Sample_Measure)
+
+plt <- ggplot(data = dat, mapping = aes(x = Coordinate, y = Value)) +
+             facet_grid(Sample ~ Measure, scales = "free_y", drop = FALSE) +
+             geom_point(size = 1) + stat_smooth(span = 0.2, se = FALSE)
+png(file = detail_plot_file, width = 8.5, height = 20, units = "in", res = 300)
+print(plt)
+dev.off()
+
+smpl <- read.table(sample_file, header = TRUE, sep = "\t", quote = '',
+                   na.strings = 'NA', check.names = FALSE, comment.char = '',
+                   stringsAsFactors = FALSE)
+pheno <- factor(smpl[['Disease Status']])
+names(pheno) <- smpl[['Sample ID']]
+dat$Phenotype <- pheno[as.character(dat$Sample)]
+plt <- ggplot(data = dat[dat$Measure == "LRR", ],
+              mapping = aes(x = Coordinate, y = Value)) +
+         stat_smooth(method = 'loess', span = 0.2, se = FALSE,
+                     mapping = aes(colour = Phenotype, alpha = Sample)) +
+         scale_alpha_manual(values = rep(1, nlevels(dat$Sample)),
+                            drop = FALSE, guide = "none") +
+         xlab("chromosome 6 position\n(Mb, NCBI build 36/hg18)") +
+         ylab("log R ratio\n(normalized copy number)") +
+         coord_cartesian(xlim = c(45200001, 45799999)) +
+         scale_x_continuous(labels = function(x) x/1000000) +
+         theme(legend.position = c(1,1), legend.justification = c(1,1))
+png(file = summary_plot_file, width = 8.5, height = 4, units = "in",
+    res = 300)
+print(plt)
+dev.off()

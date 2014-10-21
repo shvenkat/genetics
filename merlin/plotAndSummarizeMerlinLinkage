@@ -1,0 +1,110 @@
+#!/usr/bin/env Rscript
+
+suppressPackageStartupMessages(library(SVmisc))
+suppressPackageStartupMessages(library(ggplot2))
+setwd(paste("/home/shvenkat/projects",
+            "bone_dz_genetics/ashkenazi_kindred/snp_mapping_using_merlin",
+            sep = "/"))
+
+# ARGUMENTS -----------------------------------------------------------------
+
+merlinOutputDir  <- "merlin_output"
+nonPLodFile      <- "nonParaLinkage-nonparametric.tbl.gz"
+nonPAnalysisName <- "LBM_DISEASE [ALL]"
+nonPOutPrefix    <- "multipointLOD_nonParametric-nplAll-expCoxKong"
+paraLodFile      <- "paraLinkage-parametric.tbl.gz"
+paraModelName    <- "Rare_Dominant_Allele_Model"
+paraOutPrefix    <- "multipointLOD_parametric-rareDominant-fullPenetrance"
+lodCutoff        <- 2
+confInt          <- 0.9
+
+subsets <- system(sprintf(paste("find %s -mindepth 1 -maxdepth 1 -type d",
+                                "  -name subset* -print0",
+                                "| xargs -0 -L1 basename"),
+                          merlinOutputDir),
+                  intern = TRUE)
+
+# READ MERLIN OUTPUT --------------------------------------------------------
+
+nonPDat <- do.call(rbind,
+                   lapply(subsets,
+                          function(s) {
+                              f <- file.path(merlinOutputDir,
+                                             s,
+                                             nonPLodFile)
+                              d <- readMerlinLodTable(f, "nonparametric")
+                              d$Replicate <- factor(rep(s, nrow(d)))
+                              return(d)
+                          }))
+nonPDat <- subset(nonPDat,
+                  subset = !is.na(Chr) &
+                           as.character(Analysis) == nonPAnalysisName,
+                  select = c(Chr, Pos, Label, ExLOD, ExPvalue, Replicate))
+names(nonPDat) <- gsub("Ex", "", names(nonPDat))
+
+paraDat <- do.call(rbind,
+                   lapply(subsets,
+                          function(s) {
+                              f <- file.path(merlinOutputDir,
+                                             s,
+                                             paraLodFile)
+                              d <- readMerlinLodTable(f, "parametric")
+                              d$Replicate <- factor(rep(s, nrow(d)))
+                              return(d)
+                          }))
+paraDat <- subset(paraDat,
+                  subset = !is.na(Chr) &
+                           as.character(Model) == paraModelName,
+                  select = c(Chr, Pos, Label, HLOD, Replicate))
+names(paraDat) <- gsub("HLOD", "LOD", names(paraDat))
+
+# IDENTIFY LINKAGE REGION ---------------------------------------------------
+
+nonPLinkRegs <- summaryMerlinLodPeaks(nonPDat, lodCutoff, confInt)
+write.table(nonPLinkRegs,
+            file = file.path(merlinOutputDir,
+                             sprintf("%s_linkedRegions_LodOver%s-ConfInt%s.txt",
+                                     nonPOutPrefix, lodCutoff, confInt)),
+            row.names = FALSE, sep = "\t", quote = FALSE)
+
+paraLinkRegs <- summaryMerlinLodPeaks(paraDat, lodCutoff, confInt)
+write.table(paraLinkRegs,
+            file = file.path(merlinOutputDir,
+                             sprintf("%s_linkedRegions_LodOver%s-ConfInt%s.txt",
+                                     paraOutPrefix, lodCutoff, confInt)),
+            row.names = FALSE, sep = "\t", quote = FALSE)
+
+# LINKAGE PLOTS ----------------------------------------------
+
+theme_set(theme_gray(base_family = "liberation sans"))
+theme_update(axis.title = element_text(face = "bold"))
+
+svg(file = file.path(merlinOutputDir, sprintf("%s.svg", nonPOutPrefix)),
+    width = 24, height = 3)
+print(plotMerlinLod(nonPDat, chr = "all", hilight = NULL))
+dev.off()
+sapply(unique(as.character(nonPLinkRegs$Chr)),
+       function(chr) {
+           svg(file = file.path(merlinOutputDir,
+                                sprintf("%s_chr%s.svg", nonPOutPrefix, chr)),
+               width = 6, height = 4.5)
+           print(plotMerlinLod(nonPDat, chr, hilight = nonPLinkRegs))
+           dev.off()
+           invisible(NULL)
+       })
+
+svg(file = file.path(merlinOutputDir, sprintf("%s.svg", paraOutPrefix)),
+    width = 24, height = 3)
+print(plotMerlinLod(paraDat, chr = "all", hilight = NULL))
+dev.off()
+sapply(unique(as.character(paraLinkRegs$Chr)),
+       function(chr) {
+           svg(file = file.path(merlinOutputDir,
+                                sprintf("%s_chr%s.svg", paraOutPrefix, chr)),
+               width = 6, height = 4.5)
+           print(plotMerlinLod(paraDat, chr, hilight = paraLinkRegs))
+           dev.off()
+           invisible(NULL)
+       })
+
+# vim: ft=r

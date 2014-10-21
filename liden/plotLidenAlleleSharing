@@ -1,0 +1,99 @@
+#!/usr/bin/env Rscript
+
+suppressPackageStartupMessages(library(kinship2))
+suppressPackageStartupMessages(library(kinshipExtra))
+suppressPackageStartupMessages(library(SVmisc))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(plyr))
+setwd(paste("/home/shvenkat/projects",
+            "bone_dz_genetics/ashkenazi_kindred/2_snp_mapping_using_liden",
+            sep = "/"))
+
+# Constants -----------------------------------------------------------------
+
+allChromosomes    <- paste0("chr", c(as.character(1:22), "X", "Y", "MT"))
+founderHaplotypes <- c(1, 2)
+
+# Arguments
+lidenPedigreeFile <- "liden_input/pedigree.txt"
+lidenOutputDir    <- "liden_output"
+genomeRegions     <- c("chr6:35685955-51175375") # MUST BE hg19 !!
+subsets           <- as.character(0:4)
+lidenTxtBasename  <- "inferred_paternal_allele_sharing.txt.gz"
+lidenPltBasename  <- "inferred_paternal_allele_sharing.plt.gz"
+founderId         <- "4"
+plotFileBasename  <- "results/pedigreeHaplotypeSharing"
+
+# Process pedigree info -----------------------------------------------------
+
+pedData <- read.table(lidenPedigreeFile, header = FALSE, sep = "\t", quote = "",
+                      col.names = c("Person", "Father", "Mother", "Gender",
+                                    "Phenotype", "Availability"),
+                      na.strings = "-1", colClasses = "character",
+                      check.names = FALSE, comment.char = "")
+ped <- pedigree(id       = pedData$Person,
+                dadid    = pedData$Father,
+                momid    = pedData$Mother,
+                sex      = pedData$Gender,
+                affected = c("unaffected" = 0,
+                             "affected"   = 1)[pedData$Phenotype])
+pheno <- factor(c("unaffected", "low bone mass"))[ped$affected + 1]
+names(pheno) <- ped$id
+
+# Process haplotype sharing sharing info ------------------------------------
+
+getLidenDat <- function(chrom, subset) {
+    lidenRunDir <- file.path(lidenOutputDir, paste0("chr", chrom),
+                             paste0("subset.", subset))
+    haplo <- readLidenHaploShare(file.path(lidenRunDir, lidenTxtBasename),
+                                 file.path(lidenRunDir, lidenPltBasename),
+                                 founderId)
+    haplo <- haplo[, colnames(haplo) %in% ped$id]
+    if(ncol(haplo) < 2)
+        stop("Identifiers in pedigree and haplotype files do not match")
+    return(lidenPlotData(haplo, pheno))
+}
+drawLidenPlot <- function(dat, fdrHaplo, chrom, annotRange, subset) {
+    png(sprintf("%s_chr%s_founderHaplo-%s_replicate-%s.png",
+        plotFileBasename, chrom, fdrHaplo, subset),
+    width = 11, height = 7, units = "in", res = 300)
+    title <- sprintf(paste("Haplotype Sharing on Chromosome %s",
+                           "with Founder (ID %s)"),
+                     chrom, founderId)
+    lidenPlot(dat, fdrHaplo, ped,
+              phenoScale = list(values = c("unaffected" = "white",
+                                           "low bone mass" = "gray25")),
+              title = title, alpha = 1,
+              annotRange = annotRange)
+    dev.off()
+    return(invisible(NULL))
+}
+doRegion <- function(gRegion) {
+    if(gRegion %in% allChromosomes) {
+        chrom <- substring(gRegion, 4)
+        annotRange <- NULL
+    } else {
+        gRegex <- "^(chr[0-9XYMT]+):([0-9]+)-([0-9]+)$"     # e.g. "4:12-345"
+        m <- regmatches(gRegion, regexec(gRegex, gRegion))[[1]]
+        if(length(m) == 4 && m[2] %in% allChromosomes) {
+            chrom <- substring(m[2], 4)                     # e.g. "4"
+            annotRange <- range(as.integer(m[3:4]))         # e.g. (12, 345)
+        } else {
+            stop("Invalid chromosome or genomic region")
+        }
+    }
+
+    dat <- lapply(subsets, function(s) getLidenDat(chrom, s))
+    names(dat) <- subsets
+
+    m_ply(expand.grid(s = subsets, h = founderHaplotypes),
+          function(s, h) drawLidenPlot(dat[[s]], h, chrom, annotRange, s))
+    return(invisible(NULL))
+}
+invisible(lapply(genomeRegions, doRegion))
+
+# vim: set ft=r:
