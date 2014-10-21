@@ -1,0 +1,438 @@
+% Strategies for human genetics studies - a feasibility evaluation
+% Shiv Venkatasubrahmanyam
+% 2012 Feb 14
+
+# TODO
+
+* 2D diagram of tag SNP effectiveness by genetic distance and allele frequency
+  mismatch
+
+# Sources of samples
+
+* GaP registry
+
+# Genome-wide association studies
+
+## Using indication-relevant endophenotypes as traits
+
+Examples:
+
+* Common variants associated with risk for thyroid cancer were identified using
+  an initial GWAS on circulating TSH levels [@Gudmundsson2012a].
+
+### Mendelian randomization to test endophenotype-associated variants for disease of interest
+
+## Reproducibility across studies
+
+## Genetic architecture
+
+# Exome sequencing of cases and controls
+
+* Feasible if cohort size is large enough, but cost will be prohibitive.
+* Barcode and pool samples prior to exome capture and sequencing.
+* Can detect uncommon and rare variants of large effect e.g. OR > 10, as well 
+  as common variants of lesser effect, though the latter would also be found 
+  by SNP GWAS.
+
+# deCODE approach - imputed WGS
+
+* Reasons for success: Test rare (causal) variants directly, use large sample
+  sizes, lower background genetic variation in Iceland, possibility of using
+  family-based statistical genetics.
+* deCODE's approach is to impute uncommon and rare variants from whole genome
+  sequencing into chip-typed individuals and from there into their relatives.
+  The advantages are (i) querying uncommon alleles increasing the likelihood of
+  finding a large effect, (ii) use of disease-relevant endo-phenotype, (iii)
+  large sample size through the use of imputation and quantitative
+  endophenotypes, (iv) selection of traits with high heritability (confirmed in
+  the Icelandic population using their genealogy database), and likely (v)
+  reporting those GWAS on those traits for which a suitable genetic architecture
+  (high effect size alleles of sufficient frequency) happened to exist in the
+  Icelandic population (deCODE tests 1500 traits against all available imputed
+  variants).
+* Requires cohort comprised of related individuals for long-range phasing. Does
+  not require the degree of relatedness to be known i.e. genealogy is not
+  required. But for any given individual, a number of genotyped relatives must
+  be identifiable. See Kong et al 2008 Nature Genetics.
+* What is the distribution of relatedness within a sample of US individuals?
+  What cohort size is required for long-range phasing? 10% of population or
+  36,000? Likely much more since US population is heterogenous with large and
+  continued migration.
+* "According to Stefansson, Iceland is one of the world's most genetically
+  homogenous nations. To put it bluntly, Icelanders -- because there are so few
+  of them -- are more likely to have children with somebody that they are
+  related to."
+  ^[http://www.huffingtonpost.com/2011/10/26/iceland-genealogy-database_n_1032621.html]
+* As of early 2012, deCODE has published studies [@Gudmundsson2012a;
+  @Sulem2011; @Rafnar2011] that conduct genotype imputation using:
+    * whole genome sequence data from 457 Icelanders, each sequenced to an
+      average depth of 10x.
+    * whole genome SNP genotypes of 41,675 Icelanders, imputed into their
+      relatives.
+
+    I estimate that this restricts their observation to alleles of at
+    least 0.5% - 1% frequency (i.e. observed in atleast 2 individuals each
+    sequenced at 10X) or to a subset of alleles of at least 0.2% frequency which
+    were observed in only one of the 457 samples but with high confidence.
+
+In a GWAS of BCC (basal cell carcinoma) conducted by deCODE using two-way
+imputation (rare variants imputed into SNP genotyped individuals using
+long-range phasing and then into non-genotyped indivuduals using genealogy), the
+strongest signal from studying 2121 cases (of 4265 in Iceland) and nearly 40,000
+controls was a variant in the 3' UTR of TP53 with odds ratio 2.36, p-value 5.2 ×
+10^-17^ and 2% allele frequency. The best on-chip tag SNP, which was in moderate
+linkage disequilibrium with the above SNP (r^2^ = 0.15), had a much weaker
+signal with odds ratio 1.18, p-value 2.4 × 10^-3^ and 12% allele frequency.
+
+For imputed genotypes, deCODE estimates the *effective* sample size from the
+trend between sample size and variance of parameter estimates in regression
+models. Presumably, the effective sample size is used where appropriate in place
+of the count of imputed genotypes.
+
+For validation or follow-up studies, deCODE has focused on loci instead of
+variants, which is appropriate since the same variants may not be sufficiently
+frequent in a population distinct from that used in the discovery study.
+
+## deCODE questions
+
+* Read deCODE proposal
+* How often do you find significant associations with large effects? For
+  disease status and for endophenotypes?
+* Can we include CNV, indels and SV in the two-way imputation for GWAS?
+* Effect of phenotyping error on power
+* What proportion of variants of 0.1% are captured? of causal variants are captured?
+
+
+# Sequencing small numbers of unrelated sporadic cases with rare/extreme phenotypes
+
+* Idiopathic Multicartic Osteolysis
+* Idiopathic Pulmonary Fibrosis
+* Brown Adipose Tissue defect (Kevin Corbit, http://www.sciencemag.org/content/suppl/2011/10/05/science.1210878.DC1/Hussain.SOM.pdf)
+* Number of individuals needed vs. penetrance/phenotype severity vs. candidate gene/exome/whole genome scan
+
+# Mapping in kindreds
+
+* Dominant/recessive (with [autozygous/homozygous] or without consanguinity [allozygous/compound homozygous])
+* Single or multiple kindreds/sibships/singletons
+* Homozygosity mapping in single individuals
+
+# Family-based linkage/association studies
+
+* Neuropathic pain (Stefan McDonough) - heritability, GWAS had low power,
+  partner with Brigham and Women's/Partner's HealthCare and Mass. General Hosp.
+  which has 4M patients with electronic medical records that can be queried to 
+  find cases with diabetic neuropathy and idiopathic neuropathy for genotyping
+* Schizophrenia: high heritability, low proportion explained by GWAS
+    * Collaboration with Lynn DeLisi on affected sib-pair study of SCZ
+    * Find structural variants e.g. VIPR2/VPAC CNVs with large effect size
+    * Stratify by type of SCZ
+    * Collaboration with Bill Byersley on 400 linkage-mapped public kindreds in
+      NIHM collection (need to be a registered PI to access data).  Bill also 
+      has DNA from 4000 cases and 4000 controls for follow-up of genes 
+      identified from kindreds, by testing whether these have a higher frequency
+      of variants in the case-control study.
+* Consider recommendations of Lander et al for LOD scores/p-values/Z-scores
+* How sensitive are linkage and IBD results to misclassification of phenotype? 
+  To reduced penetrance or increased phenocopy?
+
+# Affected sib-pair
+* See http://www.jbrf.org/research/sibling.html
+* See http://www.jmp.com/support/downloads/life_sciences_documentation/PR_G_GN_0040.html
+* See http://www.stat.berkeley.edu/users/terry/Classes/s260.1998/Week6/week6/week6.html
+
+## Extremely discordant- and concordant sib pairs
+* See EDAC at linkage.rockefeller.edu/soft
+
+# TDT in trios
+
+# Homozygosity mapping in consanguinous families
+
+# GWAS curation
+
+* GWAS followed by limited WGS and imputation cannot identify rare variants, 
+  only somewhat rarer variants due to the r2 requirements of GWAS (Wray)
+
+* T2D
+* CVD - CAD, HF
+* Chronic kidney disease
+
+# Simulation study
+
+### EcMap 
+
+* Does simulation consider centromere-linkage i.e. interference?
+* The simulation randomizes child genotypes given parent genotypes. What is the
+  source of the parent genotypes and can they be randomized? Would this make a
+  difference?
+* Does the simulation randomize causal variant site (locus)?
+* Is randomizing conditional on family structure and affection status
+  appropriate? How does this alter the distribution of kindred genotypes and
+  mapping outcomes?
+* Can the software simulate X-linkage?
+* Useful metrics: Bayes probability crossing point/point at which
+  P(causal)/P(random) = 3/P(causal|20cM), total length of causal and random IBD
+  regions
+
+### Fastslink/SUP
+
+# Notes
+* Reading on Elston-Stewart, Lander-Green, Pseudomarker and other algorithms
+* Merlin, Allegro
+* Slink, Fastslink, SimPed, EcMap
+* LIden [@Wang2009a]
+* Superlink
+* Genetic heterogeneity
+
+## Linkage/IBD/Haplotype/FBAT/TDT/Association software
+
+* Allegro/Genehunter - multipoint linkage analysis for pedigree data, with
+  modifications for imprinted models
+* Alohomora (see Chip2Spell for preparation of input files)
+* APE (Allelic Path Explorer)
+* APL-OSA
+  * ARP.GEE
+  * ASP/ASPSHARE
+  * ASPEX
+* BAMA (Bayesian Analysis of Multilocus Association)/BARS
+* Borel - genealogical relationship inference from genetic data
+* CCREL (case-control analysis with related individuals)
+* CFC (calculating genetic diversity metrics for pedigrees)
+* CovIBD (test for excess IBD in affected sib-pair design, incorporating
+  covariates)
+* dChip Linkage (implements Lander-Green algorithm)
+* DMLE (fine mapping using linkage disequilibrium)
+* EAGLET (robust multipoint linkage by subsampling dense SNP data)
+* EasyLinkage(Plus) - convenience wrapper around single (FastLink) and
+  multipoint (GeneHunter, Allegro, Merlin) linkage analysis
+* Eclipse (error correction in pedigree genotype data)
+* EPDT - extended pedigree disequilibrium test for single/few large pedigrees
+* Exomepicks - suggest individuals for NGS following IBD determination
+* FASTER - suggest elimination of family members from linkage analysis
+* Fastlink/Linkage - single-point linkage analysis
+* Fastslink/SUP - simulation of single-point linkage analysis
+* FBAT/PBAT - family-based association test, power calculation and TDT
+* Floss - ordered subset analysis (OSA) using Merlin output
+* GASP - simulating samples of family data
+* GeneFinder - estimate location of susceptibility gene from ASP data
+* Genehunter++SAD - TDT with reduced bias for ASP
+* GeneHunter-TwoLocus - multipoint linkage under two autosomal biallelic
+  disease loci
+* Genetic Power Calculator - for QTL linkage and association studies in sibships
+* GenetSim - flexible simulations of family data
+* Genie - test association/TDT
+* Ghost - family-based association including large pedigrees
+* Glue - web wrapper around Linkage, GeneHunter, Merlin, Transmit and Unphased
+* GMCheck - genotype and phenotype checking in pedigrees
+* HaploBuild - haplotype construction in family based studies
+* Hegesma - meta-analysis of linkage studies
+* Homozygosity mapper - web-based homozygosity mapping
+* HS-TDT - haplotype sharing TDT using high-density markers in pedigrees
+* ILR - analysis of ASP data under imprinting models
+* Jenti - complex inbred genealogies
+* LAMP - linkage and association in pedigrees
+* LOT - linkage analysis of ordinal traits
+* MapMaker - various family-based analyses including multipoint linkage
+* MDR-PDT - identify epistatic interactions in PDT setting
+* Mega2 - formating genetic data files
+* MendelSoft - identify errors in large pedigrees
+* Merlin - multipoint linkage analysis
+* Metal - meta-analysis of genome scans
+* MLBGH - GeneHunter extension for sibpair and sibship designs
+* OSA - ordered subset analysis of linkage data
+* PANGAEA - various analyses for pedigree data
+* PAP - various pedigree analyses
+* PBAT - power calculations for FBAT
+* PedHunter - creation and verification of large pedigrees
+* PedPhase - rule-based haplotype inference for pedigree data
+* PedStats - summarization and error checking of pedigree data
+* PowerTrim - remove individuals from pedigree analysis with minimal loss of 
+  information
+* PowTest - power calculations for TDT and ASP designs
+* Pseudo - test linkage in large datasets or extended families
+* Pseudomarker - joint linkage and association/LD analysis for pedigrees, trios, 
+  sibships, sibpairs and case-control designs
+* QTDT - TDT for quantitative traits
+* QTL-ALL - wrapper around Merlin or SimWalk2 for calculating QTL statistics
+  for pedigree and sibpair designs
+* QTL Express - QTL mapping in pedigree, sibpair and half-sib designs
+* Quanto - sample size and power calculations for association studies under
+  various designs: matched/unmatched case-control, case-sib, case-parent and
+  case-only.
+* RelativeFinder - check relationship between pairs of individuals in a
+  pedigree
+* RelPair - infer relationship between pairs of individuals
+* ROMPREV - test QTL association, estimate heritability using family data
+* RTDT - robust transmission disequilibrium test
+* R/GAP - various genetic analysis of population and family data
+* SibLink - multipoint linkage analysis based on estimated IBD sharing in
+  sibpairs
+* SibMED - genotype error detection in sibpair data
+* SibPair - non-parametric/robust sibpair analysis
+* SIMLA - simulation of pedigree genotype data, including multiple disease loci
+  and interactions with covariates
+* Simlink - power calculation for a set of pedigrees
+* SimPed - simulation of pedigree genotype data
+* SimWalk - estimation of haplotype configurations in pedigrees
+* SNP Hitlink - wrapper to analyze SNP data using Fastlink, Superlink, Merlin
+  and Allegro
+* SNPLink - multipoint linkage analysis (with LD removal) of SNP data using
+  Merlin and Allegro
+* SPLAT - Linkage analysis for sib-pair designs
+* Superlink - Fastlink with larger limits on number of markers
+* TDT-AE - TDT robust to errors
+* TDTASP - Power calculations for TDT and ASP designs
+* TDT-PC, TDTPOWER - power calculations for TDT designs
+* TDT/S-TDT - TDT and sib TDT
+* Tlinkage - linkage under two disease loci models
+* TwoLoc - Two locus analysis of ASP data
+* Unphased - haplotype association for trio, case-control, QTL, pedigree
+  designs
+* Vitesse - multipoint linkage for pedigrees
+
+* Merlin
+* LIden
+* fastIBD
+* PseudoMarker
+* Plink
+* Haplo
+* fastPHASE
+
+## Pedigree drawing
+
+* COPE (pedigree drawing)
+* Cyrillic (pedigree drawing, commercial)
+* HaploPainter - uses haplotype outputs from GeneHunter, Allegro, Merlin and
+  SimWalk
+* Madeline - preparing and visualizing pedigree data
+* PedFiddler - pedigree drawing extension to PedPack in Pangaea
+* PediGraph - draw large complex pedigrees
+* PedStats - summarization and error checking of pedigree data
+* PedVizAPI - visual analysis of large, extended pedigrees
+* Pelican - graphical pedigree editor
+* R/GAP or other
+
+## GWAS
+
+* Beagle/BeagleCall
+* BIMBAM
+* BEAM
+* BOOST (epistatis)
+* CATS (power in two-stage designs)
+* CCRAVAT/QUTIE (rare variant association)
+* CHAPLIN (haplotype association in case-control design)
+* ChromoScan (scan statistic to identify regions enriched for hits)
+* EASYPOP (simulate population genetics data)
+* Eigensoft/EigenStrat - population stratification in GWAS using PCA
+* FamHap - haplotype association for case-control and family designs
+* Finetti - test association and deviation from Hardy-Weinberg equilibrium in
+  case-control designs
+* GC/GCF - implements genomic control method for estimating population
+  stratification
+* GeneCounting - haplotype association
+* GenePool - analysis of relative allele frequency in pooled DNA samples for
+  case-control designs
+* GeneRecon - fine-scale association mapping using a coalescent model
+* GeneVar - eQTL analysis and visualization
+* Genome - coalescent-based genome simulator
+* GenomeSIMLA - forward-time population simulator of case-control and family
+  data
+* Genomizer - association analysis
+* GWAPower - power calculation for commercial SNP chips
+* GWASelect - improved power by selection of SNPs for GWA
+* HapGen - simulate SNP genotypes for case-control designs
+* HaploBlock - haplotype block identification and LD mapping
+* HapSimu - simulation for population-based association
+* HapStat - haplotype association for case-control, cohort and cross-sectional
+  designs
+* HPlus - haplotype association for case-control designs
+* InterSNP - interaction analysis of case-control SNP data for selected markers
+* King - kinship inference and population substructure for association studies
+* LapStruct - population structure inference
+* Linkage-Imprint - single-point linkage analysis under imprinting model
+* LocusZoom - GWAS plots
+
+* MAOS - meta-analysis with overlapping sample groups
+* Margarita - mapping disease loci by infering genealogy from population data
+* MDR - multi-factor dimensionality reduction for genetic and covariate analysis
+* MegaSNPHunter - multi-SNP interactions using boosted trees for case-control 
+  designs
+* Path - epistatis analysis incorporating pathway information
+* PAWE - power calculations for association in case-control designs
+* Peer - eQTL with increased sensitivity
+* PIAGE - estimation of power and sample size for gene-environment interaction
+* Plink - various association analyses 
+* Presto - Permutation testing and order statistics for one- and two-stage 
+  association studies
+* PSAT - controlling population stratification for association tests
+* R/GenABEL
+* R/LUCA - inference of interaction between genetic and non-genetic risk
+  factors
+* R/META - fixed and random effects meta-analysis
+* R/snp.plotter - create association plots with overlaid LD maps
+* SimuPOP - simulation of large population genetics datasets
+* SNPHap - haplotype frequency estimation from unrelated subjects
+* SNPHarvester - detecting epistatic interactions in GWAS studies
+* SNP-HWE - fast exact test for HWE
+* SNPMSTAT - association tests for case-control, cohort and cross-sectional
+  studies with missing data
+* SNPTest - association test for case-control design
+* SPReg - Corrected regression of secondary phenotypes in case-control designs
+* Structure - inference of population stratification using genotype data
+* Tomcat - haplotype association for case-control designs
+* TRAP - tiled regression analysis for binary or quantitative traits
+* TreeLD - coalescent-based multipoint association for case-control, TDT and
+  QTL data
+
+## SNP/CNV data analysis software
+
+* Birdsuite
+* CHIAMO (genotype calling from Affymetrix SNP chip data)
+
+## Exome/WGS association software
+
+* Amelia
+* ARIEL
+* BreakDancer
+* Dindel/Tindel (indel calling)
+* GATK - variant discovery, calling and enrichment
+* GLF Single/Trio/Multiples - variant calls from genotype likelihood files
+* Olorin - interactive variant filtering and prioritization
+* Plink/Seq - library for analysis of NGS data
+* PolyMutt - detect and call SNVs including denovo mutations from NGS data
+* ScoreSeq - rare variant associations from sequencing data
+* SKAT - test association between rare variants and binary or quantitative
+  traits
+* SOAP - alignment, SNV calling, indel and SV detection
+* SVA - Sequence Variant Analyzer
+* Syzygy (Broad) - analysis of targeted resequencing data for variant calling
+  and association
+* Umake - SNP detection and calling from sequence alignments
+* VarScan - SNP and indel detection
+
+## Variant annotation
+
+* Annovar
+* CAROL
+* VAAST - variant aggregation and prioritization
+* DGV - Database of Genomic Variants, http://projects.tcag.ca/variation/project.html
+* dbVar - http://www.google.com/search?rlz=1C1CHKZ_enUS432US432&sourceid=chrome&ie=UTF-8&q=dbVar
+
+# References
+* Genetics: http://www.stat.berkeley.edu/users/terry/Classes/s260.1998/
+  http://www.sph.umich.edu/csg/abecasis/class/
+IBD: http://www.stat.berkeley.edu/users/terry/Classes/s260.1998/Week6/week6/node2.html#SECTION00011000000000000000
+ASP: http://www.stat.berkeley.edu/users/terry/Classes/s260.1998/Week6/week6/node3.html
+Beagle: http://faculty.washington.edu/browning/beagle/beagle.html (plus Sharon Browning's utilities)
+Pseudomarker: http://www.helsinki.fi/~tsjuntun/pseudomarker/
+Plink: http://www.helsinki.fi/~tsjuntun/pseudomarker/
+
+# Diseases
+
+HF heritability
+  http://www.google.com/webhp?rlz=1C1CHKZ_enUS432US432&sourceid=chrome-instant&ix=seb&ie=UTF-8#rlz=1C1CHKZ_enUS432US432&sourceid=chrome-psyapi1&ix=seb&ie=UTF-8&q=heart%20failure%20heritability&fp=1&biw=1920&bih=1137&bav=on.2,or.r_gc.r_pw.r_qf.,cf.osb&cad=b
+SCZ
+  http://www.broadinstitute.org/science/programs/psychiatric-disease/stanley-center-psychiatric-research/genetics-bipolar-and-schizo
+  http://www.broadinstitute.org/scientific-community/science/programs/psychiatric-disease/symposium/session-videos
+  http://www.broadinstitute.org/scientific-community/science/programs/psychiatric-disease/symposium/symposium-emerging-genetics-and-
+  http://genepath.med.harvard.edu/mccarroll/papers.html
+  http://www.nature.com/ng/journal/v44/n3/full/ng.1108.html

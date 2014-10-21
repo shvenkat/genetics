@@ -1,0 +1,200 @@
+% Notes on Human Genetics
+% Shiv Venkatasubrahmanyam
+% 2012 June 28
+
+# Kinship
+
+The kinship coefficient $\Phi_{ij}$, is the probability, for any given locus,
+that an allele picked randomly from one individual $i$ is identical by descent
+with an allele picked randomly from another individual $j$ [@Helgason2008] .
+This coefficient is formally defined as:
+
+$$ \Phi_{ij} = \sum_{p=1}^{K} \left(\frac{1}{2}\right)^{\!n_p} (1 + f_{A_p}) $$
+
+where $K$ is the total number of independent paths from common ancestors in the
+pedigree linking individuals $i$ and $j$, $n_p$ is the number of steps in the
+$p$-th path, and $f_{A_p}$ is the coefficient of inbreeding for the common
+ancestor of the $p$-th path. The coefficient of inbreeding $f$ is calculated
+using the same formula, such that $f_i$ is equal to $\Phi$ for the parents of
+individual $i$. These calculations can be performed using a recursive algorithm.
+
+Note: The two definitions above differ by a factor of two, with the formula
+yielding a higher value, which is also consistent with the coefficient of
+relationship^[See <http://en.wikipedia.org/wiki/Coefficient_of_relationship>]. 
+
+-----------------------------------
+Relationship                  $\Phi_{ij}$
+                              ^[assuming unrelated parents]
+---------------------------   -----
+Identical twins               1
+
+Full siblings                 0.5
+
+Parent child                  0.5
+-----------------------------------
+
+Table: Kinship coefficient $\Phi_{ij}$ for varying degrees of relationship.
+
+# Physical map distance, genetic map distance and recombination frequency
+
+In general, genetic map distances between loci are additive, while
+recombination frequencies are not. At small map distances however, recombination
+frequencies are approximately additive. In other words, given three distinct
+loci $a$, $b$ and $c$ in chromosomal order, we have:
+
+$$ d(a,c) = d(a,b) + d(b,c) $$
+
+and
+
+\begin{align*}
+\Pr(R_{a,c}) & = \Pr(R_{a,b} \cap \overline{R}_{b,c})
+               + \Pr(R_{b,c} \cap \overline{R}_{a,b}) \\
+             & = \Pr(R_{a,b}) + \Pr(R_{b,c}) - 2\Pr(R_{a,b} \cap R_{b,c}) \\
+             & < \Pr(R_{a,b}) + \Pr(R_{b,c})
+\end{align*}
+
+using the following notation:
+
+$d(x,y)$
+  ~ is the genetic distance between loci $x$ and $y$
+$R_{x,y}$
+  ~ is the event of recombination between loci $x$ and $y$
+
+## Map functions
+
+The relationship between genetic distance and recombination frequency varies by
+species and sex. The  Map functions *model*
+
+# IBD sharing
+
+Consider two individuals who are $n$th-degree cousins separated by $2(n + 1)$
+meioses^[Note that $n>0$; $n=0$ does not represent the case of full siblings.].
+Their chance of sharing a given locus IBD is $2^{-2n}$, which decreases rapidly
+with increasing $n$. Given that they do share a locus IBD, they are expected to
+also share a region around this locus that is on average $200/(2n + 2)$
+centiMorgans (cM) in genetic length. Notably, this length deceases more
+gradually with $n$. For instance, if $n$ is 9, the likelihood of sharing any
+given locus IBD is 0.000004, and the shared region is on average 10 cM in length 
+[@Kong2008].
+
+## Estimation of the probability of sharing a locus IBD
+
+$n$-th degree cousins have 2 common ancestors in the $(n+1)$-th preceding
+generation. At any given locus, they can share at most one of the four alleles
+present in the common ancestors, each with a probability of $2^{-2(n+1)}$. Hence
+the probability of sharing any allele at a given locus IBD is $4 \times
+2^{-2(n+1)} = 2^{-2n}$.
+
+## Estimation of the length of an IBD region
+
+Given that two $n$-th degree cousins, separated by $2(n + 1)$ meioses, share a
+locus IBD, the distribution and the mean of the length of the shared region
+around this locus can be estimated as follows. I use the following notation and
+relationships:
+
+$l$
+  ~ the genetic length of the shared region around the IBD locus in Morgans
+$d$
+  ~ the genetic distance from the IBD locus to one end of the shared region
+$c(x)$
+  ~ the number of crossovers between two loci $x$ Morgans apart in a single 
+    meiosis
+$R_x$
+  ~ the event of recombination between two loci $x$ Morgans apart in a single 
+    meiosis
+$\theta(x)$
+  ~ the recombination fraction between two loci $x$ Morgans apartevent of recombination between two loci $x$ Morgans apart in a single 
+    meiosis
+
+Assuming a miniscule and fixed probability of a crossover occurring at any
+given locus (i.e. ignoring crossover interference and recombination hotspots),
+$c_x$ has a binomial distribution that can be well approximated by a Poisson
+distribution with parameter $\lambda = x$ (Haldane map function). The
+probability of recombination between two loci separated by a genetic distance of
+x Morgans is $(1-e^{-2x})/2$.
+
+\begin{align*}
+\Pr(R_x) 
+  &= \Pr(c_x is odd) \\
+  &= \sum_{k=0}^\infty \Pr(c_x = 2k+1)
+\end{align*}
+
+\begin{displaymath} c_{x,1} = \frac{1-e^{-2x}}{2} \quad \end{displaymath}
+
+Then:
+
+\begin{align*}
+\Pr(d^{IBD} > x) &= \Pr(\overline{R}_x)^{2(n+1)} && \text{ignoring recombination hotspots} \\
+  &= \left( \frac{1+e^{-2x}}{2} \right)^{2(n+1)} && \text{see above} \\
+  &= 
+\end{align*}
+
+\newcommand{\dd}{\, \mathrm{d}}
+\begin{align*}
+\text{E}[l^{IBD}] &= 2 \, \text{E}[d^{IBD}] && \text{ignoring crossover interference} \\
+  &= 2 \, \int_0^\infty \! x \Pr(d^{IBD} = x) \dd x \\
+  &= 2 \, \int_0^\infty \! x \dd (\Pr(d^{IBD} \leq x)) \\
+  &= 2 \, \int_0^\infty \! x \dd (1 - \Pr(d^{IBD} > x)) \\
+  &= 2 \, \int_0^\infty \! x \dd (1 - \Pr(\overline{R}_x)^{2(n+1)}) && \text{ignoring recombination hotspots} \\
+  &= 2 \, \int_0^\infty \! x \dd (1 - (1 + e^{-2x})/2)^{2(n+1)}) \\
+  &= 2 \, \int_0^\infty \! x \dd (1 - (\Pr(r_{x,1} = 0))^{2(n+1)}) && \text{ignoring recombination hotspots} \\
+  &= 2 \, \int_0^\infty \! x \dd (1 - (1 - \Pr(r_{x,1} > 0))^{2(n+1)}) \\
+%  |(1-x)^{2n+2} dx \\
+%  &= (2n+2) \int_0^\infty x (1-x)^{2n+1} dx \\
+%  &= (2n+2) \cdot \text{B}(2, 2n+2) \\
+%  &= (2n+2) \frac{1!(2n+1)!}{(2n+3)!} \\
+  &= 1/(2n+3)
+\end{align*}
+
+# Genetic Heterogeneity
+
+## Heterogeneity between studies or populations
+
+Testing for significance using study and ethnicity as covariates
+Breslow-Day-Tarone test
+
+# References
+See http://en.wikipedia.org/wiki/Genetic_linkage
+http://www.wiley.com/legacy/wileychi/eob/pdfs/eob2_genetic.pdf
+http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2704907/pdf/nihms71982.pdf
+
+Linkage Analysis
+  http://scholar.google.com/scholar?start=10&q=linkage+analysis&hl=en&as_sdt=0,5
+  http://www.isogg.org/wiki/Identical_By_Descent_segment
+  http://linkage.rockefeller.edu/ott/SLINK.htm
+  http://pngu.mgh.harvard.edu/~purcell/plink/contact.shtml#cite
+  http://linkage.rockefeller.edu/soft/#f
+  http://www.stat.wisc.edu/~yandell/statgen/software/biosci/linkage.html#pedigree
+  http://www.sph.umich.edu/csg/abecasis/software.html
+  http://watson.hgen.pitt.edu/docs/simwalk2.html
+  http://watson.hgen.pitt.edu/register/
+  http://linkage.rockefeller.edu/suzanne/Berlin_Genetic_Association_Course_2011.html
+  http://linkage.rockefeller.edu/soft/linkage/
+  ftp://linkage.rockefeller.edu/software/
+  http://watson.hgen.pitt.edu/cgi-bin/old_user.cgi?email=shvenkat%40amgen.com&submit=Enter
+  http://www.helsinki.fi/~tsjuntun/pseudomarker/ 
+  http://www.genomeutwin.org/member/cores/stat/linkage/
+  http://paed.hku.hk/uploadarea/yangwl/html/software.html
+
+Papers citing Lin 2008 (LIden) http://scholar.google.com/scholar?cites=2334026065478728245&as_sdt=2005&sciodt=0,5&hl=en
+http://webdocs.cs.ualberta.ca/~ghlin/Projects/snp.php
+http://etd.ohiolink.edu/view.cgi/Li%20Xin.pdf?case1259867573
+Haplo2Ped
+  http://bighapmap.big.ac.cn/software.html
+  http://w01.biomedcentral.com/1471-2105/12/350
+  http://www.biomedcentral.com/1471-2105/10/115#B48
+Genetics software 
+  http://linkage.rockefeller.edu/soft/list2.html 
+  http://linkage.rockefeller.edu/soft/list2.html 
+  http://watson.hgen.pitt.edu/register/soft_doc.html
+  ftp://ftp-genome.wi.mit.edu/distribution/software/genehunter/
+  http://www.sph.umich.edu/csg/abecasis/software.html
+  http://pngu.mgh.harvard.edu/~purcell/
+
+HapMap, 1Kg, Seattle exomes
+  http://en.wikipedia.org/wiki/HapMap
+  http://en.wikipedia.org/wiki/1000_Genomes_Project
+  http://www.1000genomes.org/about
+  http://hapmap.ncbi.nlm.nih.gov/downloads/index.html.en#release
+  http://www.1000genomes.org/faq
+  http://www.nature.com/nature/journal/v467/n7319/full/nature09534.html
